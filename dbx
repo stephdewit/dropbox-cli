@@ -2,6 +2,14 @@
 
 set -e
 
+die() {
+	echo "$@" 1>&2
+	exit 1
+}
+
+[ "$1" = "" ] && die "Missing argument"
+[ ! -f "$1" ] && die "Missing file"
+
 endpoint=https://content.dropboxapi.com/2/files/upload
 tokenpath=$HOME/.creds/dropbox.token
 
