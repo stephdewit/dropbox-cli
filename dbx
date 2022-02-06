@@ -7,13 +7,23 @@ die() {
 	exit 1
 }
 
+while getopts ":n:" opt; do
+	case $opt in
+		n ) filename=$OPTARG;;
+		: ) echo "-$OPTARG requires an argument" >&2; exit 1;;
+		\?) echo "Invalid option: -$OPTARG" >&2; exit 1;;
+	esac
+done
+
+shift $((OPTIND - 1))
+
 [ "$1" = "" ] && die "Missing argument"
 [ ! -f "$1" ] && die "Missing file"
 
 endpoint=https://content.dropboxapi.com/2/files/upload
 tokenpath=$HOME/.creds/dropbox.token
 
-filename=$(basename "$1")
+[ "$filename" = "" ] && filename=$(basename "$1")
 apiarg=$(jq -c --null-input --arg path "/$filename" '.path |= $path')
 
 curl \
