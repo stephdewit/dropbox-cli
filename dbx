@@ -2,9 +2,12 @@
 
 set -e
 
+endpoint=https://content.dropboxapi.com/2/files/upload
+tokenpath=$HOME/.creds/dropbox.token
+
 curl \
-	-X POST https://content.dropboxapi.com/2/files/upload \
-	--header "Authorization: Bearer $(cat "$HOME/.creds/dropbox.token")" \
+	-X POST $endpoint \
+	--header "Authorization: Bearer $(cat "$tokenpath")" \
 	--header "Dropbox-API-Arg: {\"path\": \"/$(basename "$1")\"}" \
 	--header "Content-Type: application/octet-stream" \
 	--data-binary "@$1" \
