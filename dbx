@@ -5,10 +5,13 @@ set -e
 endpoint=https://content.dropboxapi.com/2/files/upload
 tokenpath=$HOME/.creds/dropbox.token
 
+filename=$(basename "$1")
+apiarg=$(jq -c --null-input --arg path "/$filename" '.path |= $path')
+
 curl \
 	-X POST $endpoint \
 	--header "Authorization: Bearer $(cat "$tokenpath")" \
-	--header "Dropbox-API-Arg: {\"path\": \"/$(basename "$1")\"}" \
+	--header "Dropbox-API-Arg: $apiarg" \
 	--header "Content-Type: application/octet-stream" \
 	--data-binary "@$1" \
 | jq
