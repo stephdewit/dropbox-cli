@@ -27,6 +27,7 @@ tokenpath=$HOME/.creds/dropbox.token
 apiarg=$(jq -c --null-input --arg path "/$filename" '.path |= $path')
 
 curl \
+	--progress-bar \
 	-X POST $endpoint \
 	--header "Authorization: Bearer $(cat "$tokenpath")" \
 	--header "Dropbox-API-Arg: $apiarg" \
