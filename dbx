@@ -31,5 +31,5 @@ curl \
 	--header "Authorization: Bearer $(cat "$tokenpath")" \
 	--header "Dropbox-API-Arg: $apiarg" \
 	--header "Content-Type: application/octet-stream" \
-	--data-binary "@$1" \
+	-T "$1" \
 | jq
