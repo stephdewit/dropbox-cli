@@ -7,9 +7,10 @@ die() {
 	exit 1
 }
 
-while getopts ":n:" opt; do
+while getopts ":n:c:" opt; do
 	case $opt in
 		n ) filename=$OPTARG;;
+		c ) chunk=$OPTARG;;
 		: ) echo "-$OPTARG requires an argument" >&2; exit 1;;
 		\?) echo "Invalid option: -$OPTARG" >&2; exit 1;;
 	esac
@@ -18,10 +19,26 @@ done
 shift $((OPTIND - 1))
 
 [ "$1" = "" ] && die "Missing argument"
-[ ! -f "$1" ] && die "Missing file"
 
 endpoint=https://content.dropboxapi.com/2/files/upload_session
 token=$(cat "$HOME/.creds/dropbox.token")
+
+if [ "$chunk" != "" ]; then
+	offset=$(( chunk * 150 * 1024 * 1024 ))
+	apiarg=$(echo '{ "close": false, "cursor": { "offset": 0, "session_id": "" } }' | jq -c --arg offset "$offset" --arg session "$1" '.cursor.offset |= ($offset|tonumber) | .cursor.session_id |= $session')
+
+	curl \
+		-X POST $endpoint/append_v2 \
+		--header "Authorization: Bearer $token" \
+		--header "Dropbox-API-Arg: $apiarg" \
+		--header "Content-Type: application/octet-stream" \
+		-T - \
+	> /dev/null
+
+	exit 0
+fi
+
+[ ! -f "$1" ] && die "Missing file"
 
 session=$(
 	curl -sS \
@@ -31,16 +48,9 @@ session=$(
 		--header "Content-Type: application/octet-stream" \
 	| jq -r .session_id)
 
-apiarg=$(echo '{ "close": false, "cursor": { "offset": 0, "session_id": "" } }' | jq -c --arg offset 0 --arg session "$session" '.cursor.offset |= ($offset|tonumber) | .cursor.session_id |= $session')
-
-curl \
-        --progress-bar \
-        -X POST $endpoint/append_v2 \
-        --header "Authorization: Bearer $token" \
-        --header "Dropbox-API-Arg: $apiarg" \
-        --header "Content-Type: application/octet-stream" \
-        -T "$1" \
-> /dev/null
+split -d -a 4 -b 150M --filter "
+	$0 -c \$FILE \"$session\"
+" "$1" ""
 
 [ "$filename" = "" ] && filename=$(basename "$1")
 
