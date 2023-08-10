@@ -20,17 +20,35 @@ shift $((OPTIND - 1))
 [ "$1" = "" ] && die "Missing argument"
 [ ! -f "$1" ] && die "Missing file"
 
-endpoint=https://content.dropboxapi.com/2/files/upload
-tokenpath=$HOME/.creds/dropbox.token
+endpoint=https://content.dropboxapi.com/2/files/upload_session
+token=$(cat "$HOME/.creds/dropbox.token")
 
-[ "$filename" = "" ] && filename=$(basename "$1")
-apiarg=$(jq -c --null-input --arg path "/$filename" '.path |= $path')
+session=$(
+	curl -sS \
+		-X POST $endpoint/start \
+		--header "Authorization: Bearer $token" \
+		--header "Dropbox-API-Arg: {\"close\": false}" \
+		--header "Content-Type: application/octet-stream" \
+	| jq -r .session_id)
+
+apiarg=$(echo '{ "close": false, "cursor": { "offset": 0, "session_id": "" } }' | jq -c --arg offset 0 --arg session "$session" '.cursor.offset |= ($offset|tonumber) | .cursor.session_id |= $session')
 
 curl \
-	--progress-bar \
-	-X POST $endpoint \
-	--header "Authorization: Bearer $(cat "$tokenpath")" \
-	--header "Dropbox-API-Arg: $apiarg" \
-	--header "Content-Type: application/octet-stream" \
-	-T "$1" \
+        --progress-bar \
+        -X POST $endpoint/append_v2 \
+        --header "Authorization: Bearer $token" \
+        --header "Dropbox-API-Arg: $apiarg" \
+        --header "Content-Type: application/octet-stream" \
+        -T "$1" \
+> /dev/null
+
+[ "$filename" = "" ] && filename=$(basename "$1")
+
+apiarg=$(echo '{ "commit": { "autorename": true, "mode": "add", "mute": false, "path": "", "strict_conflict":false}, "cursor": { "offset":0, "session_id": "" } }' | jq -c --arg path "/$filename" --arg offset "$(stat -c %s "$1")" --arg session "$session" '.commit.path |= $path | .cursor.offset |= ($offset|tonumber) | .cursor.session_id |= $session')
+
+curl -sS \
+        -X POST $endpoint/finish \
+        --header "Authorization: Bearer $token" \
+        --header "Dropbox-API-Arg: $apiarg" \
+        --header "Content-Type: application/octet-stream" \
 | jq
