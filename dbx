@@ -24,7 +24,7 @@ endpoint=https://content.dropboxapi.com/2/files/upload_session
 token=$(cat "$HOME/.creds/dropbox.token")
 
 if [ "$chunk" != "" ]; then
-	offset=$(( chunk * 150 * 1024 * 1024 ))
+	offset=$(echo "$chunk * 150 * 1024 * 1024" | bc)
 	apiarg=$(echo '{ "close": false, "cursor": { "offset": 0, "session_id": "" } }' | jq -c --arg offset "$offset" --arg session "$1" '.cursor.offset |= ($offset|tonumber) | .cursor.session_id |= $session')
 
 	curl \
